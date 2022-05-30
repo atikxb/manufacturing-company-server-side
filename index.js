@@ -53,7 +53,20 @@ async function run() {
             const parts = await partsCollection.find({}).toArray();
             res.json(parts);
         });
-        
+        //get single part
+        app.get('/parts/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const part = await partsCollection.findOne(query);
+            res.send(part);
+        })
+
+        // user token api
+        app.post('/login', async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
+            res.json({ token });
+        });
 
     }
     finally {
