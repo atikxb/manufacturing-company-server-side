@@ -221,8 +221,8 @@ run().catch(console.dir);
 
 //default route
 app.get('/', (req, res) => {
-    res.send('Running Inventory server');
+    res.send('Running Manufacturing server');
 });
 app.listen(port, () => {
-    console.log('running on Inventory server', port);
+    console.log('running on Manufacturing server', port);
 });
