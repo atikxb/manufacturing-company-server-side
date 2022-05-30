@@ -40,6 +40,7 @@ async function run() {
         const usersCollection = database.collection("users");
         const ordersCollection = database.collection("orders");
         const paymentsCollection = database.collection("payments");
+        const reviewsCollection = database.collection("reviews");
         //verify if admin
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -104,7 +105,7 @@ async function run() {
         //get single order to make payment
         app.get('/payment/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
-            const query = {_id: ObjectId(id)};
+            const query = { _id: ObjectId(id) };
             const order = await ordersCollection.findOne(query);
             res.send(order);
         })
@@ -112,22 +113,21 @@ async function run() {
         app.post("/create-payment-intent", verifyJWT, async (req, res) => {
             const price = req.body.price;
             const amount = price * 100;
-            console.log(amount);
             // Create a PaymentIntent with the order amount and currency
             const paymentIntent = await stripe.paymentIntents.create({
-              amount: amount,
-              currency: "usd",
-              payment_method_types: ['card']
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card']
             });
             res.send({
-              clientSecret: paymentIntent.client_secret,
+                clientSecret: paymentIntent.client_secret,
             });
-          });
-          //update order info with transaction id when payment done
+        });
+        //update order info with transaction id when payment done
         app.patch('/order/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
-            const payment = req.body
-            const query = {_id: ObjectId(id)};
+            const payment = req.body;
+            const query = { _id: ObjectId(id) };
             const updateDoc = {
                 $set: {
                     status: 'pending',
@@ -137,7 +137,44 @@ async function run() {
             const result = await paymentsCollection.insertOne(payment);
             const updatedBooking = await ordersCollection.updateOne(query, updateDoc);
             res.send(updatedBooking);
-        })
+        });
+        //Inserting review 
+        app.post('/review', verifyJWT, async (req, res) => {
+            const review = req.body;
+            const result = await reviewsCollection.insertOne(review);
+            res.json(result);
+        });
+        //find all reviews
+        app.get('/reviews', async (req, res) => {
+            const reviews = await reviewsCollection.find({}).toArray();
+            res.json(reviews);
+        });
+
+        //get current user
+        app.get('/user/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const user = await usersCollection.findOne({ email: email });
+            res.send(user);
+        });
+        //update current user
+        app.patch('/user/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const updatedUser = req.body;
+            const query = { email: email };
+            const updateDoc = {
+                $set: updatedUser
+            }
+            const result = await usersCollection.updateOne(query, updateDoc);
+            res.send(result);
+        });
+        //check if admin
+        app.get('/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const user = await usersCollection.findOne({ email: email });
+            isAdmin = user.role === 'admin';
+            console.log(isAdmin);
+            res.send({ admin: isAdmin });;
+        });
 
         //create user token and upsert to database when login/register
         app.put('/user/:email', async (req, res) => {
