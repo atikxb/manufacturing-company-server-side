@@ -37,6 +37,8 @@ async function run() {
         await client.connect();
         const database = client.db("manufacturer");
         const partsCollection = database.collection("parts");
+        const usersCollection = database.collection("users");
+        const ordersCollection = database.collection("orders");
         //verify if admin
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -53,20 +55,43 @@ async function run() {
             const parts = await partsCollection.find({}).toArray();
             res.json(parts);
         });
-        //get single part
+        //get single parts
         app.get('/parts/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
-            const part = await partsCollection.findOne(query);
-            res.send(part);
+            const singleParts = await partsCollection.findOne(query);
+            res.send(singleParts);
         })
-
-        // user token api
-        app.post('/login', async (req, res) => {
-            const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
-            res.json({ token });
+        //Inserting order 
+        app.post('/order', verifyJWT, async (req, res) => {
+            const order = req.body;
+            const filter = { _id: ObjectId(order.partsId) };
+            const result = await ordersCollection.insertOne(order);
+            //updating quantity of the ordered parts
+            const singleParts = await partsCollection.findOne(filter);
+            const remainQuantity = singleParts.quantity - order.quantity;
+            const option = { upsert: false };
+            const updateDoc = {
+                $set: { quantity: remainQuantity }
+            }
+            console.log(updateDoc, order.quantity);
+            await partsCollection.updateOne(filter, updateDoc, option);
+            res.json(result);
         });
+
+        //create user token and upsert to database when login/register
+        app.put('/user/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const option = { upsert: true };
+            const updateDoc = {
+                $set: user
+            }
+            const result = await usersCollection.updateOne(filter, updateDoc, option);
+            const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
+            res.send({ result, token });
+        })
 
     }
     finally {
