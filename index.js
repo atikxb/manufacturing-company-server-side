@@ -70,6 +70,13 @@ async function run() {
             const result = await partsCollection.insertOne(doctor);
             res.json(result);
         });
+        //delete a parts
+        app.delete('/parts/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await partsCollection.deleteOne(query);
+            res.json(result);
+        });
         //Inserting order 
         app.post('/order', verifyJWT, async (req, res) => {
             const order = req.body;
