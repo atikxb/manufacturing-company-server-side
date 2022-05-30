@@ -130,7 +130,7 @@ async function run() {
             const query = {_id: ObjectId(id)};
             const updateDoc = {
                 $set: {
-                    status: pending,
+                    status: 'pending',
                     transactionId: payment.transactionId,
                 }
             }
