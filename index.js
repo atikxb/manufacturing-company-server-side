@@ -150,7 +150,12 @@ async function run() {
             res.json(reviews);
         });
 
-        //get current user
+        //find all users
+        app.get('/users', verifyJWT, async (req, res) => {
+            const users = await usersCollection.find({}).toArray();
+            res.json(users);
+        });
+        //find current user
         app.get('/user/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
             const user = await usersCollection.findOne({ email: email });
@@ -172,9 +177,19 @@ async function run() {
             const email = req.params.email;
             const user = await usersCollection.findOne({ email: email });
             isAdmin = user.role === 'admin';
-            console.log(isAdmin);
             res.send({ admin: isAdmin });;
         });
+         //make user admin
+         app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const updateDoc = {
+                $set: { role: 'admin' }
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            res.send(result);
+            console.log(result);
+        })
 
         //create user token and upsert to database when login/register
         app.put('/user/:email', async (req, res) => {
