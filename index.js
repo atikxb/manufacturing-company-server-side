@@ -64,6 +64,12 @@ async function run() {
             const singleParts = await partsCollection.findOne(query);
             res.send(singleParts);
         })
+        //Inserting parts
+        app.post('/add-parts', verifyJWT, verifyAdmin, async (req, res) => {
+            const doctor = req.body;
+            const result = await partsCollection.insertOne(doctor);
+            res.json(result);
+        });
         //Inserting order 
         app.post('/order', verifyJWT, async (req, res) => {
             const order = req.body;
