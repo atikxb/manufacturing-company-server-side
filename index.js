@@ -39,6 +39,7 @@ async function run() {
         const partsCollection = database.collection("parts");
         const usersCollection = database.collection("users");
         const ordersCollection = database.collection("orders");
+        const paymentsCollection = database.collection("payments");
         //verify if admin
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -78,6 +79,65 @@ async function run() {
             await partsCollection.updateOne(filter, updateDoc, option);
             res.json(result);
         });
+        //find user specific orders or all orders
+        app.get('/orders', verifyJWT, async (req, res) => {
+            const email = req.query.email;
+            const decodedEmail = req.decoded.email;
+            if (email === decodedEmail) {
+                const query = email ? { email: email } : {};//run query for specific user or return all
+                const orders = await ordersCollection.find(query).toArray();
+                res.json(orders);
+            }
+            else {
+                return res.status(403).send({ message: 'Forbidden access' });
+            }
+
+        });
+        //delete a order
+        app.delete('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await ordersCollection.deleteOne(query);
+            res.json(result);
+        });
+
+        //get single order to make payment
+        app.get('/payment/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: ObjectId(id)};
+            const order = await ordersCollection.findOne(query);
+            res.send(order);
+        })
+        //process payment
+        app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+            const price = req.body.price;
+            const amount = price * 100;
+            console.log(amount);
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+              amount: amount,
+              currency: "usd",
+              payment_method_types: ['card']
+            });
+            res.send({
+              clientSecret: paymentIntent.client_secret,
+            });
+          });
+          //update order info with transaction id when payment done
+        app.patch('/order/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body
+            const query = {_id: ObjectId(id)};
+            const updateDoc = {
+                $set: {
+                    status: pending,
+                    transactionId: payment.transactionId,
+                }
+            }
+            const result = await paymentsCollection.insertOne(payment);
+            const updatedBooking = await ordersCollection.updateOne(query, updateDoc);
+            res.send(updatedBooking);
+        })
 
         //create user token and upsert to database when login/register
         app.put('/user/:email', async (req, res) => {
