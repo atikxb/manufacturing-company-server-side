@@ -73,6 +73,7 @@ async function run() {
         //delete a parts
         app.delete('/parts/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
+            console.log(id);
             const query = { _id: ObjectId(id) };
             const result = await partsCollection.deleteOne(query);
             res.json(result);
@@ -92,6 +93,11 @@ async function run() {
             console.log(updateDoc, order.quantity);
             await partsCollection.updateOne(filter, updateDoc, option);
             res.json(result);
+        });
+        //find all orders
+        app.get('/all-orders', verifyJWT, async (req, res) => {
+            const orders = await ordersCollection.find({}).toArray();
+            res.json(orders);
         });
         //find user specific orders or all orders
         app.get('/orders', verifyJWT, async (req, res) => {
@@ -151,6 +157,18 @@ async function run() {
             const updatedBooking = await ordersCollection.updateOne(query, updateDoc);
             res.send(updatedBooking);
         });
+         //update order status to shipped once admin ship it
+         app.patch('/order-shipment/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: 'shipped',
+                }
+            }
+            const updatedBooking = await ordersCollection.updateOne(query, updateDoc);
+            res.send(updatedBooking);
+        });
         //Inserting review 
         app.post('/review', verifyJWT, async (req, res) => {
             const review = req.body;
@@ -192,8 +210,8 @@ async function run() {
             isAdmin = user.role === 'admin';
             res.send({ admin: isAdmin });;
         });
-         //make user admin
-         app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
+        //make user admin
+        app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const updateDoc = {
